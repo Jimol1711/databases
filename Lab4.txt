@@ -1,0 +1,68 @@
+Integrantes: Vicente Leyton (Sección 1)
+	     Juan Molina (Sección 1)
+	     Andrés Salazar (Sección 1)
+
+P1. SELECT COUNT (nombre) AS conteo 
+    FROM topimdb.pelicula;
+
+P2. SELECT COUNT(DISTINCT anho) AS conteo 
+    FROM topimdb.pelicula;
+
+P3. SELECT * 
+    FROM topimdb.pelicula 
+    ORDER BY calificacion DESC, nombre, anho 
+    FETCH FIRST 10 ROWS ONLY;
+
+P4. SELECT DISTINCT a_nombre 
+    FROM (SELECT * 
+	  FROM topimdb.pelicula 
+	  ORDER BY calificacion DESC, nombre, anho 
+	  FETCH FIRST 10 ROWS ONLY) AS acts 
+    JOIN topimdb.personaje 
+	 ON nombre = p_nombre 
+	 AND anho = p_anho;
+
+P5. SELECT DISTINCT a_nombre
+    FROM (SELECT DISTINCT a_nombre 
+    	  FROM (SELECT * 
+	  	FROM topimdb.pelicula 
+	  	ORDER BY calificacion DESC, nombre, anho 
+	  	FETCH FIRST 10 ROWS ONLY) AS acts 
+    	  JOIN topimdb.personaje 
+	 	ON nombre = p_nombre 
+		AND anho = p_anho) AS actr
+    JOIN topimdb.actor
+	ON nombre = a_nombre
+	AND genero = 'F';
+
+P6. SELECT DISTINCT (p_anho/10 *10)
+    FROM topimdb.personaje
+    WHERE a_nombre = 'Buscemi, Steve';
+
+P7. SELECT anho, COUNT(*) AS conteo
+    FROM topimdb.pelicula
+    GROUP BY anho;
+
+P8. SELECT * 
+    FROM (SELECT anho, COUNT(*) AS conteo
+    	  FROM topimdb.pelicula
+    	  GROUP BY anho) AS foo
+    WHERE conteo >= 2 
+    ORDER BY conteo DESC;
+
+P9. SELECT a_nombre, COUNT(*) AS conteo
+    FROM (SELECT DISTINCT a_nombre, p_nombre
+    	  FROM topimdb.personaje 
+          JOIN topimdb.pelicula
+	      ON nombre = p_nombre 
+	      AND anho = p_anho 
+	      AND calificacion >= 8.6) AS foo
+    GROUP BY a_nombre;
+
+P10. SELECT p_nombre, p_anho, COUNT(DISTINCT nombre) AS conteo
+     FROM actor
+     RIGHT JOIN personaje
+     	ON a_nombre = nombre
+     	AND genero = 'F'
+     GROUP BY p_nombre, p_anho;
+    	

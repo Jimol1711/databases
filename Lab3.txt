@@ -1,0 +1,13 @@
+P1. SELECT * FROM topimdb.pelicula WHERE anho BETWEEN 1980 AND 1989 ORDER BY anho DESC;
+
+P2. SELECT personaje FROM topimdb.personaje WHERE a_nombre = 'Freeman, Morgan (I)' ORDER BY p_anho;
+
+P3. SELECT nombre, anho, calificacion FROM topimdb.pelicula, topimdb.personaje WHERE nombre = p_nombre AND a_nombre = 'Freeman, Morgan (I)' ORDER BY calificacion DESC;
+
+P4. SELECT pers.personaje FROM topimdb.personaje pers JOIN topimdb.pelicula pel ON pel.nombre = pers.p_nombre JOIN topimdb.actor act ON pers.a_nombre = act.nombre WHERE act.genero = 'F' AND pel.anho BETWEEN 1990 AND 1999 AND pel.calificacion >= 8.5;
+
+P5. SELECT * FROM topimdb.pelicula WHERE nombre LIKE 'The Lord of the Rings%' ORDER BY calificacion, anho;
+
+P6. SELECT DISTINCT act.nombre FROM topimdb.actor act JOIN topimdb.personaje pers1 ON act.nombre = pers1.a_nombre JOIN personaje pers2 ON pers1.p_nombre = pers2.p_nombre AND pers1.a_nombre = pers2.a_nombre WHERE pers1.personaje <> pers2.personaje;
+
+P10. SELECT * FROM topimdb.pelicula EXCEPT SELECT pel1.nombre, pel1.anho, pel1.calificacion FROM topimdb.pelicula pel1 JOIN topimdb.pelicula pel2 ON pel1.calificacion < pel2.calificacion;
