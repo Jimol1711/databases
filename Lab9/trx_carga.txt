@@ -1,0 +1,184 @@
+Integrantes:
+Vicente Leyton
+Juan Molina
+Andrés Salazar
+
+P1. Se copian las tablas pero con las llaves primarias y restricciones.
+
+CREATE TABLE trx_p.vaj_estado (
+    nombre varchar (255),
+	voto_electoral smallint,
+	cierre time,
+	num_candidatos smallint,
+	primary key (nombre)
+);
+
+INSERT INTO vaj_estado SELECT * FROM estado;
+
+CREATE TABLE trx_p.vaj_condado (
+    nombre varchar (255),
+	estado varchar (255),
+	reportado float,
+	primary key (nombre, estado),
+	foreign key (estado) references vaj_estado(nombre),
+	CHECK (reportado >= 0 AND reportado <= 1)
+);
+
+INSERT INTO vaj_condado SELECT * FROM condado;
+
+CREATE TABLE trx_p.vaj_candidato (
+    nombre varchar (255),
+	partido varchar (255),
+	primary key (nombre)
+);
+
+INSERT INTO vaj_candidato SELECT * FROM candidato;
+
+CREATE TABLE trx_p.vaj_votosPorCondado (
+    candidato varchar (255),
+	condado varchar (255),
+	estado varchar (255),
+    	votos int,
+	primary key (candidato,condado,estado),
+	foreign key (candidato) references vaj_candidato(nombre),
+	foreign key (condado,estado) references vaj_condado(nombre,estado)
+);
+
+INSERT INTO vaj_votosPorCondado SELECT * FROM votosPorCondado;
+
+P2. Las actualizaciones serían como sigue:
+
+START TRANSACTION;
+	UPDATE trx_p.vaj_votosPorCondado AS A SET votos=B.votos
+		FROM votosPorCondado1 B
+		WHERE A.candidato=B.candidato
+		AND A.condado=B.condado
+		AND A.estado=B.estado;
+COMMIT;
+
+P3. Las actualizaciones serían como sigue:
+
+START TRANSACTION;
+	UPDATE trx_p.vaj_condado AS A SET reportado=B.reportado
+		FROM condado1 B
+		WHERE A.nombre=B.nombre
+		AND A.estado=B.estado;
+COMMIT;
+
+P4. Se hace una transacción con ambas actualizaciones, pero en lugar de igualar a los votos de la hora, se suman los votos de la hora en cuestión:
+
+START TRANSACTION;
+	UPDATE trx_p.vaj_votosPorCondado AS A1 SET votos=(A1.votos+B1.votos)
+		FROM votosPorCondado2 B1
+		WHERE A1.candidato=B1.candidato
+		AND A1.condado=B1.condado
+		AND A1.estado=B1.estado;
+	UPDATE trx_p.vaj_condado AS A2 SET reportado=B2.reportado
+		FROM condado2 B2
+		WHERE A2.nombre=B2.nombre
+		AND A2.estado=B2.estado;
+COMMIT;
+
+P5. Se hace lo mismo para cada hora:
+
+START TRANSACTION;
+	UPDATE trx_p.vaj_votosPorCondado AS A1 SET votos=(A1.votos+B1.votos)
+		FROM votosPorCondado3 B1
+		WHERE A1.candidato=B1.candidato
+		AND A1.condado=B1.condado
+		AND A1.estado=B1.estado;
+	UPDATE trx_p.vaj_condado AS A2 SET reportado=B2.reportado
+		FROM condado3 B2
+		WHERE A2.nombre=B2.nombre
+		AND A2.estado=B2.estado;
+COMMIT;
+
+START TRANSACTION;
+	UPDATE trx_p.vaj_votosPorCondado AS A1 SET votos=(A1.votos+B1.votos)
+		FROM votosPorCondado4 B1
+		WHERE A1.candidato=B1.candidato
+		AND A1.condado=B1.condado
+		AND A1.estado=B1.estado;
+	UPDATE trx_p.vaj_condado AS A2 SET reportado=B2.reportado
+		FROM condado4 B2
+		WHERE A2.nombre=B2.nombre
+		AND A2.estado=B2.estado;
+COMMIT;
+
+START TRANSACTION;
+	UPDATE trx_p.vaj_votosPorCondado AS A1 SET votos=(A1.votos+B1.votos)
+		FROM votosPorCondado5 B1
+		WHERE A1.candidato=B1.candidato
+		AND A1.condado=B1.condado
+		AND A1.estado=B1.estado;
+	UPDATE trx_p.vaj_condado AS A2 SET reportado=B2.reportado
+		FROM condado5 B2
+		WHERE A2.nombre=B2.nombre
+		AND A2.estado=B2.estado;
+COMMIT;
+
+START TRANSACTION;
+	UPDATE trx_p.vaj_votosPorCondado AS A1 SET votos=(A1.votos+B1.votos)
+		FROM votosPorCondado6 B1
+		WHERE A1.candidato=B1.candidato
+		AND A1.condado=B1.condado
+		AND A1.estado=B1.estado;
+	UPDATE trx_p.vaj_condado AS A2 SET reportado=B2.reportado
+		FROM condado6 B2
+		WHERE A2.nombre=B2.nombre
+		AND A2.estado=B2.estado;
+COMMIT;
+
+START TRANSACTION;
+	UPDATE trx_p.vaj_votosPorCondado AS A1 SET votos=(A1.votos+B1.votos)
+		FROM votosPorCondado7 B1
+		WHERE A1.candidato=B1.candidato
+		AND A1.condado=B1.condado
+		AND A1.estado=B1.estado;
+	UPDATE trx_p.vaj_condado AS A2 SET reportado=B2.reportado
+		FROM condado7 B2
+		WHERE A2.nombre=B2.nombre
+		AND A2.estado=B2.estado;
+COMMIT;
+
+START TRANSACTION;
+	UPDATE trx_p.vaj_votosPorCondado AS A1 SET votos=(A1.votos+B1.votos)
+		FROM votosPorCondado8 B1
+		WHERE A1.candidato=B1.candidato
+		AND A1.condado=B1.condado
+		AND A1.estado=B1.estado;
+	UPDATE trx_p.vaj_condado AS A2 SET reportado=B2.reportado
+		FROM condado8 B2
+		WHERE A2.nombre=B2.nombre
+		AND A2.estado=B2.estado;
+COMMIT;
+
+START TRANSACTION;
+	UPDATE trx_p.vaj_votosPorCondado AS A1 SET votos=(A1.votos+B1.votos)
+		FROM votosPorCondado9 B1
+		WHERE A1.candidato=B1.candidato
+		AND A1.condado=B1.condado
+		AND A1.estado=B1.estado;
+	UPDATE trx_p.vaj_condado AS A2 SET reportado=B2.reportado
+		FROM condado9 B2
+		WHERE A2.nombre=B2.nombre
+		AND A2.estado=B2.estado;
+COMMIT;
+
+P6. Putin haría algo como esto:
+
+START TRANSACTION;
+	UPDATE trx_p.vaj_votosPorCondado AS A1 SET votos=(A1.votos+B1.votos)
+		FROM votosPorCondadoX B1
+		WHERE A1.candidato=B1.candidato
+		AND A1.condado=B1.condado
+		AND A1.estado=B1.estado;
+	UPDATE trx_p.vaj_condado AS A2 SET reportado=B2.reportado
+		FROM condadoX B2
+		WHERE A2.nombre=B2.nombre
+		AND A2.estado=B2.estado;
+COMMIT;
+
+No lo logró ya que se viola la restricción, el error es el siguiente:
+ERROR:  new row for relation "vaj_condado" violates check constraint "vaj_condado_reportado_check"
+DETAIL:  Failing row contains (Real County, Texas, 100).
