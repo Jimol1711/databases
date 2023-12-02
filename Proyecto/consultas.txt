@@ -1,0 +1,95 @@
+1. Ordena las plataforma por nota promedio entre los promedio de imdb y rotten tomatoes
+
+SELECT
+    p.nombre AS plataforma,
+    ROUND(AVG(pe.imdb), 1) AS promedio_imdb,
+    ROUND(AVG(pe.RottenTomatoes), 1) AS promedio_rottentomatoes,
+    ROUND((AVG(pe.imdb) + AVG(pe.RottenTomatoes)) / 2, 1) AS promedio_general
+FROM
+    plataforma p
+JOIN
+    esta_en ee ON p.ID = ee.ID_pelicula
+JOIN
+    pelicula pe ON ee.ID_pelicula = pe.ID
+GROUP BY
+    p.nombre
+HAVING
+    AVG((pe.imdb + pe.RottenTomatoes) / 2) >= 8.4
+ORDER BY
+    AVG((pe.imdb + pe.RottenTomatoes) / 2) DESC;
+
+2. Orden las plataforma por variedad de generos, y muestra el mas y el menos predominante
+
+SELECT
+    p.nombre AS plataforma,
+    COUNT(DISTINCT g.ID_genero) AS num_generos_distintos,
+    gen_mas.nombre AS genero_mas_predominante,
+    gen_menos.nombre AS genero_menos_predominante
+FROM
+    plataforma p
+JOIN
+    esta_en e ON p.ID = e.ID_plataforma
+JOIN
+    pelicula pel ON e.ID_pelicula = pel.ID
+JOIN
+    es_de g ON pel.ID = g.ID_pelicula
+JOIN
+    genero gen ON g.ID_genero = gen.ID
+JOIN (
+    SELECT
+        p.ID AS ID_plataforma,
+        gen.nombre,
+        ROW_NUMBER() OVER (PARTITION BY p.ID ORDER BY COUNT(*) DESC) AS rnk_mas,
+        ROW_NUMBER() OVER (PARTITION BY p.ID ORDER BY COUNT(*) ASC) AS rnk_menos
+    FROM
+        plataforma p
+    JOIN
+        esta_en e ON p.ID = e.ID_plataforma
+    JOIN
+        pelicula pel ON e.ID_pelicula = pel.ID
+    JOIN
+        es_de g ON pel.ID = g.ID_pelicula
+    JOIN
+        genero gen ON g.ID_genero = gen.ID
+    GROUP BY
+        p.ID, gen.nombre
+) AS gen_mas ON p.ID = gen_mas.ID_plataforma AND gen_mas.rnk_mas = 1
+JOIN (
+    SELECT
+        p.ID AS ID_plataforma,
+        gen.nombre,
+        ROW_NUMBER() OVER (PARTITION BY p.ID ORDER BY COUNT(*) ASC) AS rnk_menos,
+        ROW_NUMBER() OVER (PARTITION BY p.ID ORDER BY COUNT(*) DESC) AS rnk_mas
+    FROM
+        plataforma p
+    JOIN
+        esta_en e ON p.ID = e.ID_plataforma
+    JOIN
+        pelicula pel ON e.ID_pelicula = pel.ID
+    JOIN
+        es_de g ON pel.ID = g.ID_pelicula
+    JOIN
+        genero gen ON g.ID_genero = gen.ID
+    GROUP BY
+        p.ID, gen.nombre
+) AS gen_menos ON p.ID = gen_menos.ID_plataforma AND gen_menos.rnk_menos = 1
+GROUP BY
+    p.nombre, gen_mas.nombre, gen_menos.nombre;
+
+3. Lo mismo que la anterior pero sin los generos más y menos predominantes
+
+SELECT
+    p.nombre AS plataforma,
+    COUNT(DISTINCT g.ID_genero) AS num_generos_distintos
+FROM
+    plataforma p
+JOIN
+    esta_en e ON p.ID = e.ID_plataforma
+JOIN
+    pelicula pel ON e.ID_pelicula = pel.ID
+JOIN
+    es_de g ON pel.ID = g.ID_pelicula
+JOIN
+    genero gen ON g.ID_genero = gen.ID
+GROUP BY
+    p.nombre;
