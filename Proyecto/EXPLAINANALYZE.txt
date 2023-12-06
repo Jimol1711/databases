@@ -1,6 +1,7 @@
 1. Planificación primera consulta:
 
-[{"QUERY PLAN":"Sort  (cost=385.74..385.86 rows=47 width=644) (actual time=3.248..3.250 rows=4 loops=1)"},{"QUERY PLAN":"  Sort Key: (avg(((pe.imdb + pe.rottentomatoes) / '2'::numeric))) DESC"},{"QUERY PLAN":"  Sort Method: quicksort  Memory: 25kB"},{"QUERY PLAN":"  ->  HashAggregate  (cost=381.05..384.44 rows=47 width=644) (actual time=3.170..3.177 rows=4 loops=1)"},{"QUERY PLAN":"        Group Key: p.nombre"},{"QUERY PLAN":"        Filter: (avg(((pe.imdb + pe.rottentomatoes) / '2'::numeric)) >= 8.4)"},{"QUERY PLAN":"        Batches: 1  Memory Usage: 40kB"},{"QUERY PLAN":"        ->  Nested Loop  (cost=13.44..378.87 rows=14| QUERY PLAN                                                                                                                                   |
+Sin ningún índice:
+| QUERY PLAN                                                                                                                               |
 | -------------------------------------------------------------------------------------------------------------------------------------------- |
 | Sort  (cost=385.74..385.86 rows=47 width=644) (actual time=3.248..3.250 rows=4 loops=1)                                                      |
 |   Sort Key: (avg(((pe.imdb + pe.rottentomatoes) / '2'::numeric))) DESC                                                                       |
@@ -21,168 +22,329 @@
 |                     Index Cond: (id = ee.id_pelicula)                                                                                        |
 | Planning Time: 32.517 ms                                                                                                                     |
 | Execution Time: 11.662 ms                                                                                                                    |
+Tiempo: 44.179 ms
+
+Con índices:
+| QUERY PLAN                                                                                                                             |
+| -------------------------------------------------------------------------------------------------------------------------------------- |
+| Sort  (cost=1228.57..1228.58 rows=4 width=652) (actual time=16.570..16.572 rows=4 loops=1)                                             |
+|   Sort Key: (avg(((pe.imdb + pe.rottentomatoes) / '2'::numeric))) DESC, (count(pe.id)) DESC                                            |
+|   Sort Method: quicksort  Memory: 25kB                                                                                                 |
+|   ->  HashAggregate  (cost=1228.41..1228.53 rows=4 width=652) (actual time=16.552..16.559 rows=4 loops=1)                              |
+|         Group Key: p.nombre                                                                                                            |
+|         Batches: 1  Memory Usage: 24kB                                                                                                 |
+|         ->  Hash Join  (cost=516.83..924.24 rows=17381 width=532) (actual time=4.101..11.633 rows=17381 loops=1)                       |
+|               Hash Cond: (ee.id_pelicula = pe.id)                                                                                      |
+|               ->  Hash Join  (cost=1.09..362.86 rows=17381 width=524) (actual time=0.039..3.775 rows=17381 loops=1)                    |
+|                     Hash Cond: (ee.id_plataforma = p.id)                                                                               |
+|                     ->  Seq Scan on esta_en ee  (cost=0.00..267.81 rows=17381 width=16) (actual time=0.014..0.984 rows=17381 loops=1)  |
+|                     ->  Hash  (cost=1.04..1.04 rows=4 width=520) (actual time=0.012..0.013 rows=4 loops=1)                             |
+|                           Buckets: 1024  Batches: 1  Memory Usage: 9kB                                                                 |
+|                           ->  Seq Scan on plataforma p  (cost=0.00..1.04 rows=4 width=520) (actual time=0.008..0.009 rows=4 loops=1)   |
+|               ->  Hash  (cost=306.44..306.44 rows=16744 width=16) (actual time=3.927..3.927 rows=16744 loops=1)                        |
+|                     Buckets: 32768  Batches: 1  Memory Usage: 986kB                                                                    |
+|                     ->  Seq Scan on pelicula pe  (cost=0.00..306.44 rows=16744 width=16) (actual time=0.009..1.449 rows=16744 loops=1) |
+| Planning Time: 0.385 ms                                                                                                                |
+| Execution Time: 16.826 ms                                                                                                              |
+Tiempo: 17.211 ms
 
 2. Planificación segunda consulta:
 
-| QUERY PLAN                                                                                                                                                                                                                                                       |
-| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| GroupAggregate  (cost=31542.64..31761.90 rows=9745 width=1556) (actual time=474.386..487.117 rows=4 loops=1)                                                                                                                                                     |
-|   Group Key: p.nombre, gen_mas.nombre, gen_menos.nombre                                                                                                                                                                                                          |
-|   ->  Sort  (cost=31542.64..31567.00 rows=9745 width=1556) (actual time=473.982..475.882 rows=40742 loops=1)                                                                                                                                                     |
-|         Sort Key: p.nombre, gen_mas.nombre, gen_menos.nombre, g.id_genero                                                                                                                                                                                        |
-|         Sort Method: quicksort  Memory: 3600kB                                                                                                                                                                                                                   |
-|         ->  Hash Join  (cost=23426.12..24299.51 rows=9745 width=1556) (actual time=409.410..427.777 rows=40742 loops=1)                                                                                                                                          |
-|               Hash Cond: (g.id_genero = gen.id)                                                                                                                                                                                                                  |
-|               ->  Hash Join  (cost=23412.97..24260.00 rows=9745 width=1556) (actual time=402.147..415.624 rows=40742 loops=1)                                                                                                                                    |
-|                     Hash Cond: (g.id_pelicula = e.id_pelicula)                                                                                                                                                                                                   |
-|                     ->  Seq Scan on es_de g  (cost=0.00..602.98 rows=39098 width=16) (actual time=20.326..22.118 rows=39098 loops=1)                                                                                                                             |
-|                     ->  Hash  (cost=23360.81..23360.81 rows=4173 width=1560) (actual time=381.632..381.653 rows=17381 loops=1)                                                                                                                                   |
-|                           Buckets: 32768 (originally 8192)  Batches: 1 (originally 1)  Memory Usage: 1505kB                                                                                                                                                      |
-|                           ->  Hash Join  (cost=22949.85..23360.81 rows=4173 width=1560) (actual time=375.107..379.134 rows=17381 loops=1)                                                                                                                        |
-|                                 Hash Cond: (pel.id = e.id_pelicula)                                                                                                                                                                                              |
-|                                 ->  Seq Scan on pelicula pel  (cost=0.00..306.44 rows=16744 width=4) (actual time=0.086..0.827 rows=16744 loops=1)                                                                                                               |
-|                                 ->  Hash  (cost=22897.69..22897.69 rows=4173 width=1556) (actual time=374.871..374.892 rows=17381 loops=1)                                                                                                                       |
-|                                       Buckets: 32768 (originally 8192)  Batches: 1 (originally 1)  Memory Usage: 1437kB                                                                                                                                          |
-|                                       ->  Hash Join  (cost=22522.49..22897.69 rows=4173 width=1556) (actual time=365.156..372.473 rows=17381 loops=1)                                                                                                            |
-|                                             Hash Cond: (e.id_plataforma = p.id)                                                                                                                                                                                  |
-|                                             ->  Seq Scan on esta_en e  (cost=0.00..267.81 rows=17381 width=16) (actual time=0.046..0.778 rows=17381 loops=1)                                                                                                     |
-|                                             ->  Hash  (cost=22522.06..22522.06 rows=34 width=1560) (actual time=365.062..365.081 rows=4 loops=1)                                                                                                                 |
-|                                                   Buckets: 1024  Batches: 1  Memory Usage: 9kB                                                                                                                                                                   |
-|                                                   ->  Merge Join  (cost=10979.59..22522.06 rows=34 width=1560) (actual time=348.461..365.076 rows=4 loops=1)                                                                                                     |
-|                                                         Merge Cond: (gen_mas.id_plataforma = p.id)                                                                                                                                                               |
-|                                                         ->  Merge Join  (cost=10963.20..22504.51 rows=48 width=1040) (actual time=348.429..365.042 rows=4 loops=1)                                                                                               |
-|                                                               Merge Cond: (gen_mas.id_plataforma = gen_menos.id_plataforma)                                                                                                                                      |
-|                                                               ->  Subquery Scan on gen_mas  (cost=5481.60..11251.65 rows=98 width=520) (actual time=270.114..275.869 rows=4 loops=1)                                                                             |
-|                                                                     Filter: (gen_mas.rnk_mas = 1)                                                                                                                                                                |
-|                                                                     ->  WindowAgg  (cost=5481.60..11006.65 rows=19600 width=544) (actual time=270.113..275.866 rows=4 loops=1)                                                                                   |
-|                                                                           Run Condition: (row_number() OVER (?) <= 1)                                                                                                                                            |
-|                                                                           ->  Incremental Sort  (cost=5481.60..10663.65 rows=19600 width=528) (actual time=270.018..275.757 rows=105 loops=1)                                                                    |
-|                                                                                 Sort Key: p_1.id, (count(*)) DESC                                                                                                                                                |
-|                                                                                 Presorted Key: p_1.id                                                                                                                                                            |
-|                                                                                 Full-sort Groups: 2  Sort Method: quicksort  Average Memory: 27kB  Peak Memory: 27kB                                                                                             |
-|                                                                                 ->  GroupAggregate  (cost=5446.10..9717.18 rows=19600 width=528) (actual time=231.065..275.402 rows=105 loops=1)                                                                 |
-|                                                                                       Group Key: p_1.id, gen_1.nombre                                                                                                                                            |
-|                                                                                       ->  Incremental Sort  (cost=5446.10..9216.79 rows=40585 width=520) (actual time=230.948..271.353 rows=40742 loops=1)                                                       |
-|                                                                                             Sort Key: p_1.id, gen_1.nombre                                                                                                                                       |
-|                                                                                             Presorted Key: p_1.id                                                                                                                                                |
-|                                                                                             Full-sort Groups: 4  Sort Method: quicksort  Average Memory: 27kB  Peak Memory: 27kB                                                                                 |
-|                                                                                             Pre-sorted Groups: 4  Sort Method: quicksort  Average Memory: 1187kB  Peak Memory: 1865kB                                                                            |
-|                                                                                             ->  Nested Loop  (cost=5422.65..7046.88 rows=40585 width=520) (actual time=203.066..237.178 rows=40742 loops=1)                                                      |
-|                                                                                                   ->  Merge Join  (cost=5422.49..6031.97 rows=40585 width=12) (actual time=202.980..210.130 rows=40742 loops=1)                                                  |
-|                                                                                                         Merge Cond: (e_1.id_plataforma = p_1.id)                                                                                                                 |
-|                                                                                                         ->  Sort  (cost=5406.10..5507.56 rows=40585 width=16) (actual time=202.913..204.510 rows=40742 loops=1)                                                  |
-|                                                                                                               Sort Key: e_1.id_plataforma                                                                                                                        |
-|                                                                                                               Sort Method: quicksort  Memory: 3128kB                                                                                                             |
-|                                                                                                               ->  Hash Join  (cost=1046.45..2299.59 rows=40585 width=16) (actual time=52.616..192.584 rows=40742 loops=1)                                        |
-|                                                                                                                     Hash Cond: (g_1.id_pelicula = e_1.id_pelicula)                                                                                               |
-|                                                                                                                     ->  Seq Scan on es_de g_1  (cost=0.00..602.98 rows=39098 width=16) (actual time=0.057..113.636 rows=39098 loops=1)                           |
-|                                                                                                                     ->  Hash  (cost=829.19..829.19 rows=17381 width=20) (actual time=52.039..52.042 rows=17381 loops=1)                                          |
-|                                                                                                                           Buckets: 32768  Batches: 1  Memory Usage: 1139kB                                                                                       |
-|                                                                                                                           ->  Hash Join  (cost=515.74..829.19 rows=17381 width=20) (actual time=35.438..48.267 rows=17381 loops=1)                               |
-|                                                                                                                                 Hash Cond: (e_1.id_pelicula = pel_1.id)                                                                                          |
-|                                                                                                                                 ->  Seq Scan on esta_en e_1  (cost=0.00..267.81 rows=17381 width=16) (actual time=0.052..7.550 rows=17381 loops=1)               |
-|                                                                                                                                 ->  Hash  (cost=306.44..306.44 rows=16744 width=4) (actual time=34.905..34.906 rows=16744 loops=1)                               |
-|                                                                                                                                       Buckets: 32768  Batches: 1  Memory Usage: 845kB                                                                            |
-|                                                                                                                                       ->  Seq Scan on pelicula pel_1  (cost=0.00..306.44 rows=16744 width=4) (actual time=0.039..27.627 rows=16744 loops=1)      |
-|                                                                                                         ->  Sort  (cost=16.39..16.74 rows=140 width=4) (actual time=0.060..0.062 rows=4 loops=1)                                                                 |
-|                                                                                                               Sort Key: p_1.id                                                                                                                                   |
-|                                                                                                               Sort Method: quicksort  Memory: 25kB                                                                                                               |
-|                                                                                                               ->  Seq Scan on plataforma p_1  (cost=0.00..11.40 rows=140 width=4) (actual time=0.041..0.042 rows=4 loops=1)                                      |
-|                                                                                                   ->  Memoize  (cost=0.15..0.17 rows=1 width=520) (actual time=0.000..0.000 rows=1 loops=40742)                                                                  |
-|                                                                                                         Cache Key: g_1.id_genero                                                                                                                                 |
-|                                                                                                         Cache Mode: logical                                                                                                                                      |
-|                                                                                                         Hits: 40715  Misses: 27  Evictions: 0  Overflows: 0  Memory Usage: 4kB                                                                                   |
-|                                                                                                         ->  Index Scan using genero_pkey on genero gen_1  (cost=0.14..0.16 rows=1 width=520) (actual time=0.005..0.005 rows=1 loops=27)                          |
-|                                                                                                               Index Cond: (id = g_1.id_genero)                                                                                                                   |
-|                                                               ->  Materialize  (cost=5481.60..11251.89 rows=98 width=520) (actual time=78.312..89.165 rows=4 loops=1)                                                                                            |
-|                                                                     ->  Subquery Scan on gen_menos  (cost=5481.60..11251.65 rows=98 width=520) (actual time=78.307..89.157 rows=4 loops=1)                                                                       |
-|                                                                           Filter: (gen_menos.rnk_menos = 1)                                                                                                                                                      |
-|                                                                           ->  WindowAgg  (cost=5481.60..11006.65 rows=19600 width=544) (actual time=78.306..89.155 rows=4 loops=1)                                                                               |
-|                                                                                 Run Condition: (row_number() OVER (?) <= 1)                                                                                                                                      |
-|                                                                                 ->  Incremental Sort  (cost=5481.60..10663.65 rows=19600 width=528) (actual time=78.300..89.123 rows=105 loops=1)                                                                |
-|                                                                                       Sort Key: p_2.id, (count(*))                                                                                                                                               |
-|                                                                                       Presorted Key: p_2.id                                                                                                                                                      |
-|                                                                                       Full-sort Groups: 2  Sort Method: quicksort  Average Memory: 27kB  Peak Memory: 27kB                                                                                       |
-|                                                                                       ->  GroupAggregate  (cost=5446.10..9717.18 rows=19600 width=528) (actual time=41.026..89.042 rows=105 loops=1)                                                             |
-|                                                                                             Group Key: p_2.id, gen_2.nombre                                                                                                                                      |
-|                                                                                             ->  Incremental Sort  (cost=5446.10..9216.79 rows=40585 width=520) (actual time=40.953..85.451 rows=40742 loops=1)                                                   |
-|                                                                                                   Sort Key: p_2.id, gen_2.nombre                                                                                                                                 |
-|                                                                                                   Presorted Key: p_2.id                                                                                                                                          |
-|                                                                                                   Full-sort Groups: 4  Sort Method: quicksort  Average Memory: 27kB  Peak Memory: 27kB                                                                           |
-|                                                                                                   Pre-sorted Groups: 4  Sort Method: quicksort  Average Memory: 1187kB  Peak Memory: 1865kB                                                                      |
-|                                                                                                   ->  Nested Loop  (cost=5422.65..7046.88 rows=40585 width=520) (actual time=29.054..47.810 rows=40742 loops=1)                                                  |
-|                                                                                                         ->  Merge Join  (cost=5422.49..6031.97 rows=40585 width=12) (actual time=29.041..38.059 rows=40742 loops=1)                                              |
-|                                                                                                               Merge Cond: (e_2.id_plataforma = p_2.id)                                                                                                           |
-|                                                                                                               ->  Sort  (cost=5406.10..5507.56 rows=40585 width=16) (actual time=29.008..33.426 rows=40742 loops=1)                                              |
-|                                                                                                                     Sort Key: e_2.id_plataforma                                                                                                                  |
-|                                                                                                                     Sort Method: quicksort  Memory: 3128kB                                                                                                       |
-|                                                                                                                     ->  Hash Join  (cost=1046.45..2299.59 rows=40585 width=16) (actual time=12.631..25.347 rows=40742 loops=1)                                   |
-|                                                                                                                           Hash Cond: (g_2.id_pelicula = e_2.id_pelicula)                                                                                         |
-|                                                                                                                           ->  Seq Scan on es_de g_2  (cost=0.00..602.98 rows=39098 width=16) (actual time=0.024..1.678 rows=39098 loops=1)                       |
-|                                                                                                                           ->  Hash  (cost=829.19..829.19 rows=17381 width=20) (actual time=12.549..12.556 rows=17381 loops=1)                                    |
-|                                                                                                                                 Buckets: 32768  Batches: 1  Memory Usage: 1139kB                                                                                 |
-|                                                                                                                                 ->  Hash Join  (cost=515.74..829.19 rows=17381 width=20) (actual time=7.128..10.541 rows=17381 loops=1)                          |
-|                                                                                                                                       Hash Cond: (e_2.id_pelicula = pel_2.id)                                                                                    |
-|                                                                                                                                       ->  Seq Scan on esta_en e_2  (cost=0.00..267.81 rows=17381 width=16) (actual time=0.009..0.747 rows=17381 loops=1)         |
-|                                                                                                                                       ->  Hash  (cost=306.44..306.44 rows=16744 width=4) (actual time=7.020..7.020 rows=16744 loops=1)                           |
-|                                                                                                                                             Buckets: 32768  Batches: 1  Memory Usage: 845kB                                                                      |
-|                                                                                                                                             ->  Seq Scan on pelicula pel_2  (cost=0.00..306.44 rows=16744 width=4) (actual time=0.007..5.429 rows=16744 loops=1) |
-|                                                                                                               ->  Sort  (cost=16.39..16.74 rows=140 width=4) (actual time=0.028..0.030 rows=4 loops=1)                                                           |
-|                                                                                                                     Sort Key: p_2.id                                                                                                                             |
-|                                                                                                                     Sort Method: quicksort  Memory: 25kB                                                                                                         |
-|                                                                                                                     ->  Seq Scan on plataforma p_2  (cost=0.00..11.40 rows=140 width=4) (actual time=0.019..0.019 rows=4 loops=1)                                |
-|                                                                                                         ->  Memoize  (cost=0.15..0.17 rows=1 width=520) (actual time=0.000..0.000 rows=1 loops=40742)                                                            |
-|                                                                                                               Cache Key: g_2.id_genero                                                                                                                           |
-|                                                                                                               Cache Mode: logical                                                                                                                                |
-|                                                                                                               Hits: 40715  Misses: 27  Evictions: 0  Overflows: 0  Memory Usage: 4kB                                                                             |
-|                                                                                                               ->  Index Scan using genero_pkey on genero gen_2  (cost=0.14..0.16 rows=1 width=520) (actual time=0.001..0.001 rows=1 loops=27)                    |
-|                                                                                                                     Index Cond: (id = g_2.id_genero)                                                                                                             |
-|                                                         ->  Sort  (cost=16.39..16.74 rows=140 width=520) (actual time=0.029..0.029 rows=4 loops=1)                                                                                                               |
-|                                                               Sort Key: p.id                                                                                                                                                                                     |
-|                                                               Sort Method: quicksort  Memory: 25kB                                                                                                                                                               |
-|                                                               ->  Seq Scan on plataforma p  (cost=0.00..11.40 rows=140 width=520) (actual time=0.022..0.023 rows=4 loops=1)                                                                                      |
-|               ->  Hash  (cost=11.40..11.40 rows=140 width=4) (actual time=7.249..7.250 rows=27 loops=1)                                                                                                                                                          |
-|                     Buckets: 1024  Batches: 1  Memory Usage: 9kB                                                                                                                                                                                                 |
-|                     ->  Seq Scan on genero gen  (cost=0.00..11.40 rows=140 width=4) (actual time=7.216..7.223 rows=27 loops=1)                                                                                                                                   |
-| Planning Time: 62.154 ms                                                                                                                                                                                                                                         |
-| Execution Time: 497.602 ms  
+Sin materialized ni índices:
+| QUERY PLAN                                                                                                                                                                                             |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| GroupAggregate  (cost=22213.67..22432.93 rows=9745 width=1556) (actual time=125.797..133.728 rows=4 loops=1)                                                                                           |
+|   Group Key: p.nombre, gen_mas.nombre, gen_menos.nombre                                                                                                                                                |
+|   CTE generoranking                                                                                                                                                                                    |
+|     ->  WindowAgg  (cost=5526.06..12296.12 rows=19600 width=544) (actual time=65.705..65.772 rows=105 loops=1)                                                                                         |
+|           ->  Incremental Sort  (cost=5526.06..11953.12 rows=19600 width=536) (actual time=65.698..65.739 rows=105 loops=1)                                                                            |
+|                 Sort Key: p_1.id, (count(*))                                                                                                                                                           |
+|                 Presorted Key: p_1.id                                                                                                                                                                  |
+|                 Full-sort Groups: 2  Sort Method: quicksort  Average Memory: 27kB  Peak Memory: 27kB                                                                                                   |
+|                 ->  WindowAgg  (cost=5481.60..11006.65 rows=19600 width=536) (actual time=60.340..65.689 rows=105 loops=1)                                                                             |
+|                       ->  Incremental Sort  (cost=5481.60..10663.65 rows=19600 width=528) (actual time=60.335..65.656 rows=105 loops=1)                                                                |
+|                             Sort Key: p_1.id, (count(*)) DESC                                                                                                                                          |
+|                             Presorted Key: p_1.id                                                                                                                                                      |
+|                             Full-sort Groups: 2  Sort Method: quicksort  Average Memory: 27kB  Peak Memory: 27kB                                                                                       |
+|                             ->  GroupAggregate  (cost=5446.10..9717.18 rows=19600 width=528) (actual time=30.031..65.602 rows=105 loops=1)                                                             |
+|                                   Group Key: p_1.id, gen_1.nombre                                                                                                                                      |
+|                                   ->  Incremental Sort  (cost=5446.10..9216.79 rows=40585 width=520) (actual time=29.965..62.087 rows=40742 loops=1)                                                   |
+|                                         Sort Key: p_1.id, gen_1.nombre                                                                                                                                 |
+|                                         Presorted Key: p_1.id                                                                                                                                          |
+|                                         Full-sort Groups: 4  Sort Method: quicksort  Average Memory: 27kB  Peak Memory: 27kB                                                                           |
+|                                         Pre-sorted Groups: 4  Sort Method: quicksort  Average Memory: 1187kB  Peak Memory: 1865kB                                                                      |
+|                                         ->  Nested Loop  (cost=5422.65..7046.88 rows=40585 width=520) (actual time=23.300..38.918 rows=40742 loops=1)                                                  |
+|                                               ->  Merge Join  (cost=5422.49..6031.97 rows=40585 width=12) (actual time=23.288..28.942 rows=40742 loops=1)                                              |
+|                                                     Merge Cond: (e_1.id_plataforma = p_1.id)                                                                                                           |
+|                                                     ->  Sort  (cost=5406.10..5507.56 rows=40585 width=16) (actual time=23.254..24.466 rows=40742 loops=1)                                              |
+|                                                           Sort Key: e_1.id_plataforma                                                                                                                  |
+|                                                           Sort Method: quicksort  Memory: 3128kB                                                                                                       |
+|                                                           ->  Hash Join  (cost=1046.45..2299.59 rows=40585 width=16) (actual time=9.007..19.132 rows=40742 loops=1)                                    |
+|                                                                 Hash Cond: (g_1.id_pelicula = e_1.id_pelicula)                                                                                         |
+|                                                                 ->  Seq Scan on es_de g_1  (cost=0.00..602.98 rows=39098 width=16) (actual time=0.006..1.838 rows=39098 loops=1)                       |
+|                                                                 ->  Hash  (cost=829.19..829.19 rows=17381 width=20) (actual time=8.878..8.880 rows=17381 loops=1)                                      |
+|                                                                       Buckets: 32768  Batches: 1  Memory Usage: 1139kB                                                                                 |
+|                                                                       ->  Hash Join  (cost=515.74..829.19 rows=17381 width=20) (actual time=3.251..6.790 rows=17381 loops=1)                           |
+|                                                                             Hash Cond: (e_1.id_pelicula = pel_1.id)                                                                                    |
+|                                                                             ->  Seq Scan on esta_en e_1  (cost=0.00..267.81 rows=17381 width=16) (actual time=0.008..0.754 rows=17381 loops=1)         |
+|                                                                             ->  Hash  (cost=306.44..306.44 rows=16744 width=4) (actual time=3.055..3.056 rows=16744 loops=1)                           |
+|                                                                                   Buckets: 32768  Batches: 1  Memory Usage: 845kB                                                                      |
+|                                                                                   ->  Seq Scan on pelicula pel_1  (cost=0.00..306.44 rows=16744 width=4) (actual time=0.012..1.114 rows=16744 loops=1) |
+|                                                     ->  Sort  (cost=16.39..16.74 rows=140 width=4) (actual time=0.030..0.031 rows=4 loops=1)                                                           |
+|                                                           Sort Key: p_1.id                                                                                                                             |
+|                                                           Sort Method: quicksort  Memory: 25kB                                                                                                         |
+|                                                           ->  Seq Scan on plataforma p_1  (cost=0.00..11.40 rows=140 width=4) (actual time=0.021..0.021 rows=4 loops=1)                                |
+|                                               ->  Memoize  (cost=0.15..0.17 rows=1 width=520) (actual time=0.000..0.000 rows=1 loops=40742)                                                            |
+|                                                     Cache Key: g_1.id_genero                                                                                                                           |
+|                                                     Cache Mode: logical                                                                                                                                |
+|                                                     Hits: 40715  Misses: 27  Evictions: 0  Overflows: 0  Memory Usage: 4kB                                                                             |
+|                                                     ->  Index Scan using genero_pkey on genero gen_1  (cost=0.14..0.16 rows=1 width=520) (actual time=0.001..0.001 rows=1 loops=27)                    |
+|                                                           Index Cond: (id = g_1.id_genero)                                                                                                             |
+|   ->  Sort  (cost=9917.55..9941.91 rows=9745 width=1556) (actual time=125.351..126.978 rows=40742 loops=1)                                                                                             |
+|         Sort Key: p.nombre, gen_mas.nombre, gen_menos.nombre, g.id_genero                                                                                                                              |
+|         Sort Method: quicksort  Memory: 3600kB                                                                                                                                                         |
+|         ->  Hash Join  (cost=1801.04..2674.42 rows=9745 width=1556) (actual time=79.939..95.271 rows=40742 loops=1)                                                                                    |
+|               Hash Cond: (g.id_genero = gen.id)                                                                                                                                                        |
+|               ->  Hash Join  (cost=1787.89..2634.91 rows=9745 width=1556) (actual time=79.890..90.342 rows=40742 loops=1)                                                                              |
+|                     Hash Cond: (g.id_pelicula = e.id_pelicula)                                                                                                                                         |
+|                     ->  Seq Scan on es_de g  (cost=0.00..602.98 rows=39098 width=16) (actual time=0.009..1.768 rows=39098 loops=1)                                                                     |
+|                     ->  Hash  (cost=1735.72..1735.72 rows=4173 width=1560) (actual time=79.850..79.854 rows=17381 loops=1)                                                                             |
+|                           Buckets: 32768 (originally 8192)  Batches: 1 (originally 1)  Memory Usage: 1505kB                                                                                            |
+|                           ->  Hash Join  (cost=1324.76..1735.72 rows=4173 width=1560) (actual time=73.536..77.426 rows=17381 loops=1)                                                                  |
+|                                 Hash Cond: (pel.id = e.id_pelicula)                                                                                                                                    |
+|                                 ->  Seq Scan on pelicula pel  (cost=0.00..306.44 rows=16744 width=4) (actual time=0.008..0.708 rows=16744 loops=1)                                                     |
+|                                 ->  Hash  (cost=1272.60..1272.60 rows=4173 width=1556) (actual time=73.496..73.499 rows=17381 loops=1)                                                                 |
+|                                       Buckets: 32768 (originally 8192)  Batches: 1 (originally 1)  Memory Usage: 1437kB                                                                                |
+|                                       ->  Hash Join  (cost=897.40..1272.60 rows=4173 width=1556) (actual time=65.871..70.841 rows=17381 loops=1)                                                       |
+|                                             Hash Cond: (e.id_plataforma = p.id)                                                                                                                        |
+|                                             ->  Seq Scan on esta_en e  (cost=0.00..267.81 rows=17381 width=16) (actual time=0.008..1.211 rows=17381 loops=1)                                           |
+|                                             ->  Hash  (cost=896.98..896.98 rows=34 width=1560) (actual time=65.854..65.857 rows=4 loops=1)                                                             |
+|                                                   Buckets: 1024  Batches: 1  Memory Usage: 9kB                                                                                                         |
+|                                                   ->  Hash Join  (cost=455.27..896.98 rows=34 width=1560) (actual time=65.842..65.852 rows=4 loops=1)                                                  |
+|                                                         Hash Cond: (gen_menos.id_plataforma = p.id)                                                                                                    |
+|                                                         ->  CTE Scan on generoranking gen_menos  (cost=0.00..441.00 rows=98 width=520) (actual time=65.707..65.715 rows=4 loops=1)                     |
+|                                                               Filter: (rnk_menos = 1)                                                                                                                  |
+|                                                               Rows Removed by Filter: 101                                                                                                              |
+|                                                         ->  Hash  (cost=454.41..454.41 rows=69 width=1040) (actual time=0.122..0.124 rows=4 loops=1)                                                   |
+|                                                               Buckets: 1024  Batches: 1  Memory Usage: 9kB                                                                                             |
+|                                                               ->  Hash Join  (cost=13.15..454.41 rows=69 width=1040) (actual time=0.047..0.120 rows=4 loops=1)                                         |
+|                                                                     Hash Cond: (gen_mas.id_plataforma = p.id)                                                                                          |
+|                                                                     ->  CTE Scan on generoranking gen_mas  (cost=0.00..441.00 rows=98 width=520) (actual time=0.015..0.086 rows=4 loops=1)             |
+|                                                                           Filter: (rnk_mas = 1)                                                                                                        |
+|                                                                           Rows Removed by Filter: 101                                                                                                  |
+|                                                                     ->  Hash  (cost=11.40..11.40 rows=140 width=520) (actual time=0.024..0.025 rows=4 loops=1)                                         |
+|                                                                           Buckets: 1024  Batches: 1  Memory Usage: 9kB                                                                                 |
+|                                                                           ->  Seq Scan on plataforma p  (cost=0.00..11.40 rows=140 width=520) (actual time=0.022..0.023 rows=4 loops=1)                |
+|               ->  Hash  (cost=11.40..11.40 rows=140 width=4) (actual time=0.040..0.040 rows=27 loops=1)                                                                                                |
+|                     Buckets: 1024  Batches: 1  Memory Usage: 9kB                                                                                                                                       |
+|                     ->  Seq Scan on genero gen  (cost=0.00..11.40 rows=140 width=4) (actual time=0.030..0.032 rows=27 loops=1)                                                                         |
+| Planning Time: 4.061 ms                                                                                                                                                                                |
+| Execution Time: 139.980 ms                                                                                                                                                                             |
+Tiempo: 144.041 ms
+
+Sin materialized con índices:
+| QUERY PLAN                                                                                                                                                                     |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| GroupAggregate  (cost=3006.17..3006.24 rows=3 width=1556) (actual time=147.725..155.896 rows=4 loops=1)                                                                        |
+|   Group Key: p.nombre, gen_mas.nombre, gen_menos.nombre                                                                                                                        |
+|   CTE generoranking                                                                                                                                                            |
+|     ->  WindowAgg  (cost=2825.29..2832.16 rows=108 width=544) (actual time=33.602..33.689 rows=105 loops=1)                                                                    |
+|           ->  Incremental Sort  (cost=2825.29..2830.27 rows=108 width=536) (actual time=33.593..33.644 rows=105 loops=1)                                                       |
+|                 Sort Key: p_1.id, (count(*))                                                                                                                                   |
+|                 Presorted Key: p_1.id                                                                                                                                          |
+|                 Full-sort Groups: 2  Sort Method: quicksort  Average Memory: 27kB  Peak Memory: 27kB                                                                           |
+|                 ->  WindowAgg  (cost=2824.11..2826.27 rows=108 width=536) (actual time=33.550..33.590 rows=105 loops=1)                                                        |
+|                       ->  Sort  (cost=2824.11..2824.38 rows=108 width=528) (actual time=33.542..33.554 rows=105 loops=1)                                                       |
+|                             Sort Key: p_1.id, (count(*)) DESC                                                                                                                  |
+|                             Sort Method: quicksort  Memory: 29kB                                                                                                               |
+|                             ->  HashAggregate  (cost=2819.38..2820.46 rows=108 width=528) (actual time=33.489..33.504 rows=105 loops=1)                                        |
+|                                   Group Key: p_1.id, gen_1.nombre                                                                                                              |
+|                                   Batches: 1  Memory Usage: 24kB                                                                                                               |
+|                                   ->  Hash Join  (cost=1143.11..2514.99 rows=40585 width=520) (actual time=12.067..26.645 rows=40742 loops=1)                                  |
+|                                         Hash Cond: (g_1.id_pelicula = e_1.id_pelicula)                                                                                         |
+|                                         ->  Hash Join  (cost=1.61..723.33 rows=39098 width=524) (actual time=0.044..7.849 rows=39098 loops=1)                                  |
+|                                               Hash Cond: (g_1.id_genero = gen_1.id)                                                                                            |
+|                                               ->  Seq Scan on es_de g_1  (cost=0.00..602.98 rows=39098 width=16) (actual time=0.018..1.847 rows=39098 loops=1)                 |
+|                                               ->  Hash  (cost=1.27..1.27 rows=27 width=520) (actual time=0.016..0.017 rows=27 loops=1)                                         |
+|                                                     Buckets: 1024  Batches: 1  Memory Usage: 10kB                                                                              |
+|                                                     ->  Seq Scan on genero gen_1  (cost=0.00..1.27 rows=27 width=520) (actual time=0.008..0.010 rows=27 loops=1)               |
+|                                         ->  Hash  (cost=924.24..924.24 rows=17381 width=16) (actual time=11.904..11.905 rows=17381 loops=1)                                    |
+|                                               Buckets: 32768  Batches: 1  Memory Usage: 1139kB                                                                                 |
+|                                               ->  Hash Join  (cost=516.83..924.24 rows=17381 width=16) (actual time=2.654..9.544 rows=17381 loops=1)                           |
+|                                                     Hash Cond: (e_1.id_pelicula = pel_1.id)                                                                                    |
+|                                                     ->  Hash Join  (cost=1.09..362.86 rows=17381 width=12) (actual time=0.027..4.113 rows=17381 loops=1)                       |
+|                                                           Hash Cond: (e_1.id_plataforma = p_1.id)                                                                              |
+|                                                           ->  Seq Scan on esta_en e_1  (cost=0.00..267.81 rows=17381 width=16) (actual time=0.008..1.393 rows=17381 loops=1)   |
+|                                                           ->  Hash  (cost=1.04..1.04 rows=4 width=4) (actual time=0.009..0.010 rows=4 loops=1)                                 |
+|                                                                 Buckets: 1024  Batches: 1  Memory Usage: 9kB                                                                   |
+|                                                                 ->  Seq Scan on plataforma p_1  (cost=0.00..1.04 rows=4 width=4) (actual time=0.007..0.007 rows=4 loops=1)     |
+|                                                     ->  Hash  (cost=306.44..306.44 rows=16744 width=4) (actual time=2.513..2.513 rows=16744 loops=1)                           |
+|                                                           Buckets: 32768  Batches: 1  Memory Usage: 845kB                                                                      |
+|                                                           ->  Seq Scan on pelicula pel_1  (cost=0.00..306.44 rows=16744 width=4) (actual time=0.006..1.043 rows=16744 loops=1) |
+|   ->  Sort  (cost=174.01..174.02 rows=3 width=1556) (actual time=147.326..149.488 rows=40742 loops=1)                                                                          |
+|         Sort Key: p.nombre, gen_mas.nombre, gen_menos.nombre, g.id_genero                                                                                                      |
+|         Sort Method: quicksort  Memory: 3599kB                                                                                                                                 |
+|         ->  Nested Loop  (cost=0.29..173.99 rows=3 width=1556) (actual time=33.685..112.995 rows=40742 loops=1)                                                                |
+|               ->  Nested Loop  (cost=0.29..173.94 rows=3 width=1556) (actual time=33.681..83.204 rows=40742 loops=1)                                                           |
+|                     ->  Nested Loop  (cost=0.29..173.80 rows=1 width=1560) (actual time=33.678..57.386 rows=17381 loops=1)                                                     |
+|                           ->  Nested Loop  (cost=0.29..173.74 rows=1 width=1556) (actual time=33.671..37.101 rows=17381 loops=1)                                               |
+|                                 ->  Nested Loop  (cost=0.00..5.96 rows=1 width=1560) (actual time=33.643..33.848 rows=4 loops=1)                                               |
+|                                       Join Filter: (p.id = gen_menos.id_plataforma)                                                                                            |
+|                                       Rows Removed by Join Filter: 12                                                                                                          |
+|                                       ->  Nested Loop  (cost=0.00..3.52 rows=1 width=1040) (actual time=33.642..33.714 rows=4 loops=1)                                         |
+|                                             Join Filter: (p.id = gen_mas.id_plataforma)                                                                                        |
+|                                             Rows Removed by Join Filter: 6                                                                                                     |
+|                                             ->  CTE Scan on generoranking gen_mas  (cost=0.00..2.43 rows=1 width=520) (actual time=33.617..33.623 rows=4 loops=1)              |
+|                                                   Filter: (rnk_mas = 1)                                                                                                        |
+|                                                   Rows Removed by Filter: 101                                                                                                  |
+|                                             ->  Seq Scan on plataforma p  (cost=0.00..1.04 rows=4 width=520) (actual time=0.007..0.007 rows=2 loops=4)                         |
+|                                       ->  CTE Scan on generoranking gen_menos  (cost=0.00..2.43 rows=1 width=520) (actual time=0.000..0.032 rows=4 loops=4)                    |
+|                                             Filter: (rnk_menos = 1)                                                                                                            |
+|                                             Rows Removed by Filter: 101                                                                                                        |
+|                                 ->  Index Only Scan using esta_en_pkey on esta_en e  (cost=0.29..124.33 rows=4345 width=16) (actual time=0.012..0.501 rows=4345 loops=4)       |
+|                                       Index Cond: (id_plataforma = p.id)                                                                                                       |
+|                                       Heap Fetches: 0                                                                                                                          |
+|                           ->  Index Scan using idx_id_pelicula on pelicula pel  (cost=0.00..0.06 rows=1 width=4) (actual time=0.001..0.001 rows=1 loops=17381)                 |
+|                                 Index Cond: (id = e.id_pelicula)                                                                                                               |
+|                     ->  Index Scan using idx_id_pelicula_es_de on es_de g  (cost=0.00..0.11 rows=2 width=16) (actual time=0.001..0.001 rows=2 loops=17381)                     |
+|                           Index Cond: (id_pelicula = e.id_pelicula)                                                                                                            |
+|               ->  Index Scan using idx_id_genero on genero gen  (cost=0.00..0.02 rows=1 width=4) (actual time=0.000..0.000 rows=1 loops=40742)                                 |
+|                     Index Cond: (id = g.id_genero)                                                                                                                             |
+| Planning Time: 3.539 ms                                                                                                                                                        |
+| Execution Time: 156.517 ms                                                                                                                                                     |
+Tiempo: 160.056
+
+Con materialized sin índices:
+| QUERY PLAN                                                                                                                                                               |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| GroupAggregate  (cost=447.75..447.79 rows=2 width=1556) (actual time=8415.539..8423.053 rows=4 loops=1)                                                                  |
+|   Group Key: p.nombre, gen_mas.nombre, gen_menos.nombre                                                                                                                  |
+|   ->  Sort  (cost=447.75..447.75 rows=2 width=1556) (actual time=8415.115..8416.748 rows=40742 loops=1)                                                                  |
+|         Sort Key: p.nombre, gen_mas.nombre, gen_menos.nombre, g.id_genero                                                                                                |
+|         Sort Method: quicksort  Memory: 3599kB                                                                                                                           |
+|         ->  Nested Loop  (cost=1.16..447.74 rows=2 width=1556) (actual time=0.095..8381.153 rows=40742 loops=1)                                                          |
+|               ->  Nested Loop  (cost=1.01..447.41 rows=2 width=1556) (actual time=0.086..8323.676 rows=40742 loops=1)                                                    |
+|                     ->  Nested Loop  (cost=0.72..153.81 rows=1 width=1560) (actual time=0.074..35.959 rows=17381 loops=1)                                                |
+|                           ->  Nested Loop  (cost=0.43..153.49 rows=1 width=1556) (actual time=0.066..6.301 rows=17381 loops=1)                                           |
+|                                 ->  Nested Loop  (cost=0.14..31.69 rows=1 width=1560) (actual time=0.048..0.158 rows=4 loops=1)                                          |
+|                                       Join Filter: (p.id = gen_mas.id_plataforma)                                                                                        |
+|                                       ->  Nested Loop  (cost=0.00..23.51 rows=1 width=1040) (actual time=0.037..0.133 rows=4 loops=1)                                    |
+|                                             Join Filter: (gen_mas.id_plataforma = gen_menos.id_plataforma)                                                               |
+|                                             Rows Removed by Join Filter: 12                                                                                              |
+|                                             ->  Seq Scan on generoranking gen_mas  (cost=0.00..11.75 rows=1 width=520) (actual time=0.029..0.034 rows=4 loops=1)         |
+|                                                   Filter: (rnk_mas = 1)                                                                                                  |
+|                                                   Rows Removed by Filter: 101                                                                                            |
+|                                             ->  Seq Scan on generoranking gen_menos  (cost=0.00..11.75 rows=1 width=520) (actual time=0.003..0.011 rows=4 loops=4)       |
+|                                                   Filter: (rnk_menos = 1)                                                                                                |
+|                                                   Rows Removed by Filter: 101                                                                                            |
+|                                       ->  Index Scan using plataforma_pkey on plataforma p  (cost=0.14..8.16 rows=1 width=520) (actual time=0.004..0.004 rows=1 loops=4) |
+|                                             Index Cond: (id = gen_menos.id_plataforma)                                                                                   |
+|                                 ->  Index Only Scan using esta_en_pkey on esta_en e  (cost=0.29..78.35 rows=4345 width=16) (actual time=0.009..0.917 rows=4345 loops=4)  |
+|                                       Index Cond: (id_plataforma = p.id)                                                                                                 |
+|                                       Heap Fetches: 0                                                                                                                    |
+|                           ->  Index Only Scan using pelicula_pkey on pelicula pel  (cost=0.29..0.32 rows=1 width=4) (actual time=0.001..0.001 rows=1 loops=17381)        |
+|                                 Index Cond: (id = e.id_pelicula)                                                                                                         |
+|                                 Heap Fetches: 0                                                                                                                          |
+|                     ->  Index Only Scan using es_de_pkey on es_de g  (cost=0.29..293.58 rows=2 width=16) (actual time=0.175..0.476 rows=2 loops=17381)                   |
+|                           Index Cond: (id_pelicula = e.id_pelicula)                                                                                                      |
+|                           Heap Fetches: 0                                                                                                                                |
+|               ->  Index Only Scan using genero_pkey on genero gen  (cost=0.14..0.16 rows=1 width=4) (actual time=0.001..0.001 rows=1 loops=40742)                        |
+|                     Index Cond: (id = g.id_genero)                                                                                                                       |
+|                     Heap Fetches: 40742                                                                                                                                  |
+| Planning Time: 4.309 ms                                                                                                                                                  |
+| Execution Time: 8423.436 ms                                                                                                                                              |
+Tiempo: 8427.745 ms
+
+Con materialized con índices:
+| QUERY PLAN                                                                                                                                                                                     |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| GroupAggregate  (cost=5432.73..13140.76 rows=64 width=538) (actual time=178.244..248.507 rows=4 loops=1)                                                                                       |
+|   Group Key: p.nombre, gen_mas.nombre, gen_menos.nombre                                                                                                                                        |
+|   ->  Incremental Sort  (cost=5432.73..12734.27 rows=40585 width=538) (actual time=174.483..242.034 rows=40742 loops=1)                                                                        |
+|         Sort Key: p.nombre, gen_mas.nombre, gen_menos.nombre, g.id_genero                                                                                                                      |
+|         Presorted Key: p.nombre, gen_mas.nombre, gen_menos.nombre                                                                                                                              |
+|         Full-sort Groups: 4  Sort Method: quicksort  Average Memory: 28kB  Peak Memory: 28kB                                                                                                   |
+|         Pre-sorted Groups: 4  Sort Method: quicksort  Average Memory: 900kB  Peak Memory: 2529kB                                                                                               |
+|         ->  Nested Loop  (cost=5324.91..10336.72 rows=40585 width=538) (actual time=170.995..227.573 rows=40742 loops=1)                                                                       |
+|               ->  Nested Loop  (cost=5324.91..9629.78 rows=40585 width=538) (actual time=170.974..200.027 rows=40742 loops=1)                                                                  |
+|                     ->  Gather Merge  (cost=5324.91..7305.83 rows=17381 width=542) (actual time=170.923..172.721 rows=17381 loops=1)                                                           |
+|                           Workers Planned: 1                                                                                                                                                   |
+|                           Workers Launched: 1                                                                                                                                                  |
+|                           ->  Sort  (cost=4324.90..4350.46 rows=10224 width=542) (actual time=9.203..9.629 rows=8690 loops=2)                                                                  |
+|                                 Sort Key: p.nombre, gen_mas.nombre, gen_menos.nombre                                                                                                           |
+|                                 Sort Method: quicksort  Memory: 1947kB                                                                                                                         |
+|                                 Worker 0:  Sort Method: quicksort  Memory: 25kB                                                                                                                |
+|                                 ->  Hash Join  (cost=521.92..1162.49 rows=10224 width=542) (actual time=2.330..6.065 rows=8690 loops=2)                                                        |
+|                                       Hash Cond: (e.id_pelicula = pel.id)                                                                                                                      |
+|                                       ->  Hash Join  (cost=6.18..619.91 rows=10224 width=538) (actual time=0.511..2.608 rows=8690 loops=2)                                                     |
+|                                             Hash Cond: (e.id_plataforma = p.id)                                                                                                                |
+|                                             ->  Parallel Index Only Scan using esta_en_pkey on esta_en e  (cost=0.29..473.43 rows=10224 width=16) (actual time=0.440..1.200 rows=8690 loops=2) |
+|                                                   Heap Fetches: 0                                                                                                                              |
+|                                             ->  Hash  (cost=5.84..5.84 rows=4 width=542) (actual time=0.115..0.118 rows=4 loops=1)                                                             |
+|                                                   Buckets: 1024  Batches: 1  Memory Usage: 9kB                                                                                                 |
+|                                                   ->  Hash Join  (cost=3.47..5.84 rows=4 width=542) (actual time=0.099..0.110 rows=4 loops=1)                                                  |
+|                                                         Hash Cond: (gen_menos.id_plataforma = p.id)                                                                                            |
+|                                                         ->  Seq Scan on generoranking gen_menos  (cost=0.00..2.31 rows=4 width=11) (actual time=0.026..0.034 rows=4 loops=1)                   |
+|                                                               Filter: (rnk_menos = 1)                                                                                                          |
+|                                                               Rows Removed by Filter: 101                                                                                                      |
+|                                                         ->  Hash  (cost=3.42..3.42 rows=4 width=531) (actual time=0.056..0.058 rows=4 loops=1)                                                 |
+|                                                               Buckets: 1024  Batches: 1  Memory Usage: 9kB                                                                                     |
+|                                                               ->  Hash Join  (cost=1.09..3.42 rows=4 width=531) (actual time=0.044..0.052 rows=4 loops=1)                                      |
+|                                                                     Hash Cond: (gen_mas.id_plataforma = p.id)                                                                                  |
+|                                                                     ->  Seq Scan on generoranking gen_mas  (cost=0.00..2.31 rows=4 width=11) (actual time=0.009..0.014 rows=4 loops=1)         |
+|                                                                           Filter: (rnk_mas = 1)                                                                                                |
+|                                                                           Rows Removed by Filter: 101                                                                                          |
+|                                                                     ->  Hash  (cost=1.04..1.04 rows=4 width=520) (actual time=0.025..0.026 rows=4 loops=1)                                     |
+|                                                                           Buckets: 1024  Batches: 1  Memory Usage: 9kB                                                                         |
+|                                                                           ->  Seq Scan on plataforma p  (cost=0.00..1.04 rows=4 width=520) (actual time=0.014..0.015 rows=4 loops=1)           |
+|                                       ->  Hash  (cost=306.44..306.44 rows=16744 width=4) (actual time=3.505..3.506 rows=16744 loops=1)                                                         |
+|                                             Buckets: 32768  Batches: 1  Memory Usage: 845kB                                                                                                    |
+|                                             ->  Seq Scan on pelicula pel  (cost=0.00..306.44 rows=16744 width=4) (actual time=0.016..1.479 rows=16744 loops=1)                                 |
+|                     ->  Index Scan using idx_id_pelicula_es_de on es_de g  (cost=0.00..0.11 rows=2 width=16) (actual time=0.001..0.001 rows=2 loops=17381)                                     |
+|                           Index Cond: (id_pelicula = e.id_pelicula)                                                                                                                            |
+|               ->  Index Scan using idx_id_genero on genero gen  (cost=0.00..0.02 rows=1 width=4) (actual time=0.000..0.000 rows=1 loops=40742)                                                 |
+|                     Index Cond: (id = g.id_genero)                                                                                                                                             |
+| Planning Time: 10.799 ms                                                                                                                                                                       |
+| Execution Time: 249.982 ms                                                                                                                                                                     |       
+Tiempo: 260.781 ms
 
 3. Planificación tercera consulta:
 
+Sin materialized ni índices:
 | QUERY PLAN                                                                                                                                                                                 |
 | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Sort  (cost=1518.65..1519.49 rows=333 width=532) (actual time=8.740..8.743 rows=4 loops=1)                                                                                                 |
-|   Sort Key: (count(*)) DESC                                                                                                                                                                |
+| Sort  (cost=1518.65..1519.49 rows=333 width=532) (actual time=7.702..7.707 rows=4 loops=1)                                                                                                 |
+|   Sort Key: (count(DISTINCT md.id_director)) DESC                                                                                                                                          |
 |   Sort Method: quicksort  Memory: 25kB                                                                                                                                                     |
-|   ->  GroupAggregate  (cost=1498.04..1504.70 rows=333 width=532) (actual time=8.723..8.733 rows=4 loops=1)                                                                                 |
+|   ->  GroupAggregate  (cost=1498.04..1504.70 rows=333 width=532) (actual time=7.683..7.697 rows=4 loops=1)                                                                                 |
 |         Group Key: e.id_plataforma, p.nombre                                                                                                                                               |
-|         ->  Sort  (cost=1498.04..1498.87 rows=333 width=524) (actual time=8.718..8.723 rows=66 loops=1)                                                                                    |
-|               Sort Key: e.id_plataforma, p.nombre                                                                                                                                          |
-|               Sort Method: quicksort  Memory: 27kB                                                                                                                                         |
-|               ->  Nested Loop  (cost=1034.02..1484.09 rows=333 width=524) (actual time=6.648..8.700 rows=66 loops=1)                                                                       |
-|                     ->  Nested Loop  (cost=1033.86..1474.98 rows=333 width=8) (actual time=6.636..8.661 rows=66 loops=1)                                                                   |
-|                           ->  Hash Join  (cost=1033.58..1369.89 rows=333 width=24) (actual time=6.618..8.556 rows=66 loops=1)                                                              |
+|         ->  Sort  (cost=1498.04..1498.87 rows=333 width=532) (actual time=7.663..7.669 rows=66 loops=1)                                                                                    |
+|               Sort Key: e.id_plataforma, p.nombre, md.id_director                                                                                                                          |
+|               Sort Method: quicksort  Memory: 28kB                                                                                                                                         |
+|               ->  Nested Loop  (cost=1034.02..1484.09 rows=333 width=532) (actual time=5.599..7.613 rows=66 loops=1)                                                                       |
+|                     ->  Nested Loop  (cost=1033.86..1474.98 rows=333 width=16) (actual time=5.588..7.578 rows=66 loops=1)                                                                  |
+|                           ->  Hash Join  (cost=1033.58..1369.89 rows=333 width=32) (actual time=5.572..7.485 rows=66 loops=1)                                                              |
 |                                 Hash Cond: (e.id_pelicula = d.id_pelicula)                                                                                                                 |
-|                                 ->  Seq Scan on esta_en e  (cost=0.00..267.81 rows=17381 width=16) (actual time=0.024..0.840 rows=17381 loops=1)                                           |
-|                                 ->  Hash  (cost=1029.56..1029.56 rows=321 width=8) (actual time=6.587..6.589 rows=63 loops=1)                                                              |
+|                                 ->  Seq Scan on esta_en e  (cost=0.00..267.81 rows=17381 width=16) (actual time=0.021..0.874 rows=17381 loops=1)                                           |
+|                                 ->  Hash  (cost=1029.56..1029.56 rows=321 width=16) (actual time=5.543..5.546 rows=63 loops=1)                                                             |
 |                                       Buckets: 1024  Batches: 1  Memory Usage: 11kB                                                                                                        |
-|                                       ->  Hash Join  (cost=700.97..1029.56 rows=321 width=8) (actual time=4.632..6.574 rows=63 loops=1)                                                    |
+|                                       ->  Hash Join  (cost=700.97..1029.56 rows=321 width=16) (actual time=3.879..5.536 rows=63 loops=1)                                                   |
 |                                             Hash Cond: (d.id_director = md.id_director)                                                                                                    |
-|                                             ->  Seq Scan on dirige d  (cost=0.00..280.85 rows=18185 width=16) (actual time=0.009..0.867 rows=18185 loops=1)                                |
-|                                             ->  Hash  (cost=698.22..698.22 rows=220 width=8) (actual time=4.616..4.617 rows=11 loops=1)                                                    |
+|                                             ->  Seq Scan on dirige d  (cost=0.00..280.85 rows=18185 width=16) (actual time=0.007..0.710 rows=18185 loops=1)                                |
+|                                             ->  Hash  (cost=698.22..698.22 rows=220 width=8) (actual time=3.864..3.866 rows=11 loops=1)                                                    |
 |                                                   Buckets: 1024  Batches: 1  Memory Usage: 9kB                                                                                             |
-|                                                   ->  Subquery Scan on md  (cost=687.78..698.22 rows=220 width=8) (actual time=4.566..4.613 rows=11 loops=1)                               |
-|                                                         ->  HashAggregate  (cost=687.78..696.02 rows=220 width=16) (actual time=4.565..4.611 rows=11 loops=1)                              |
+|                                                   ->  Subquery Scan on md  (cost=687.78..698.22 rows=220 width=8) (actual time=3.785..3.862 rows=11 loops=1)                               |
+|                                                         ->  HashAggregate  (cost=687.78..696.02 rows=220 width=16) (actual time=3.784..3.861 rows=11 loops=1)                              |
 |                                                               Group Key: d_1.id_director                                                                                                   |
 |                                                               Filter: (count(*) >= 3)                                                                                                      |
 |                                                               Batches: 1  Memory Usage: 105kB                                                                                              |
 |                                                               Rows Removed by Filter: 620                                                                                                  |
-|                                                               ->  Hash Join  (cost=355.89..684.48 rows=659 width=8) (actual time=2.178..4.410 rows=715 loops=1)                            |
+|                                                               ->  Hash Join  (cost=355.89..684.48 rows=659 width=8) (actual time=1.740..3.653 rows=715 loops=1)                            |
 |                                                                     Hash Cond: (d_1.id_pelicula = pel_1.id)                                                                                |
-|                                                                     ->  Seq Scan on dirige d_1  (cost=0.00..280.85 rows=18185 width=16) (actual time=0.006..0.859 rows=18185 loops=1)      |
-|                                                                     ->  Hash  (cost=348.30..348.30 rows=607 width=4) (actual time=2.161..2.161 rows=607 loops=1)                           |
+|                                                                     ->  Seq Scan on dirige d_1  (cost=0.00..280.85 rows=18185 width=16) (actual time=0.005..0.738 rows=18185 loops=1)      |
+|                                                                     ->  Hash  (cost=348.30..348.30 rows=607 width=4) (actual time=1.723..1.723 rows=607 loops=1)                           |
 |                                                                           Buckets: 1024  Batches: 1  Memory Usage: 30kB                                                                    |
-|                                                                           ->  Seq Scan on pelicula pel_1  (cost=0.00..348.30 rows=607 width=4) (actual time=0.009..2.082 rows=607 loops=1) |
+|                                                                           ->  Seq Scan on pelicula pel_1  (cost=0.00..348.30 rows=607 width=4) (actual time=0.008..1.658 rows=607 loops=1) |
 |                                                                                 Filter: (imdb >= '8'::numeric)                                                                             |
 |                                                                                 Rows Removed by Filter: 16137                                                                              |
 |                           ->  Index Only Scan using pelicula_pkey on pelicula pel  (cost=0.29..0.32 rows=1 width=4) (actual time=0.001..0.001 rows=1 loops=66)                             |
@@ -194,5 +356,123 @@
 |                           Hits: 62  Misses: 4  Evictions: 0  Overflows: 0  Memory Usage: 1kB                                                                                               |
 |                           ->  Index Scan using plataforma_pkey on plataforma p  (cost=0.14..0.17 rows=1 width=520) (actual time=0.003..0.003 rows=1 loops=4)                               |
 |                                 Index Cond: (id = e.id_plataforma)                                                                                                                         |
-| Planning Time: 1.517 ms                                                                                                                                                                    |
-| Execution Time: 8.897 ms                                                                                                                                                                   |                                                                                                                                                                                                                                     |
+| Planning Time: 1.136 ms                                                                                                                                                                    |
+| Execution Time: 7.863 ms                                                                                                                                                                   |
+Tiempo: 8.999 ms
+
+Sin materialized con índices:
+| QUERY PLAN                                                                                                                                                                                            |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Sort  (cost=901.71..901.75 rows=16 width=532) (actual time=4.685..4.689 rows=4 loops=1)                                                                                                               |
+|   Sort Key: (count(DISTINCT md.id_director)) DESC                                                                                                                                                     |
+|   Sort Method: quicksort  Memory: 25kB                                                                                                                                                                |
+|   ->  GroupAggregate  (cost=897.90..901.39 rows=16 width=532) (actual time=4.673..4.685 rows=4 loops=1)                                                                                               |
+|         Group Key: e.id_plataforma, p.nombre                                                                                                                                                          |
+|         ->  Sort  (cost=897.90..898.73 rows=333 width=532) (actual time=4.665..4.670 rows=66 loops=1)                                                                                                 |
+|               Sort Key: e.id_plataforma, p.nombre, md.id_director                                                                                                                                     |
+|               Sort Method: quicksort  Memory: 28kB                                                                                                                                                    |
+|               ->  Hash Join  (cost=513.34..883.95 rows=333 width=532) (actual time=2.624..4.628 rows=66 loops=1)                                                                                      |
+|                     Hash Cond: (e.id_plataforma = p.id)                                                                                                                                               |
+|                     ->  Nested Loop  (cost=512.25..881.06 rows=333 width=16) (actual time=2.596..4.586 rows=66 loops=1)                                                                               |
+|                           ->  Nested Loop  (cost=512.25..860.93 rows=321 width=20) (actual time=2.589..4.465 rows=63 loops=1)                                                                         |
+|                                 ->  Hash Join  (cost=512.25..840.84 rows=321 width=16) (actual time=2.574..4.330 rows=63 loops=1)                                                                     |
+|                                       Hash Cond: (d.id_director = md.id_director)                                                                                                                     |
+|                                       ->  Seq Scan on dirige d  (cost=0.00..280.85 rows=18185 width=16) (actual time=0.007..0.777 rows=18185 loops=1)                                                 |
+|                                       ->  Hash  (cost=509.50..509.50 rows=220 width=8) (actual time=2.560..2.562 rows=11 loops=1)                                                                     |
+|                                             Buckets: 1024  Batches: 1  Memory Usage: 9kB                                                                                                              |
+|                                             ->  Subquery Scan on md  (cost=499.06..509.50 rows=220 width=8) (actual time=2.503..2.554 rows=11 loops=1)                                                |
+|                                                   ->  HashAggregate  (cost=499.06..507.30 rows=220 width=16) (actual time=2.502..2.552 rows=11 loops=1)                                               |
+|                                                         Group Key: d_1.id_director                                                                                                                    |
+|                                                         Filter: (count(*) >= 3)                                                                                                                       |
+|                                                         Batches: 1  Memory Usage: 105kB                                                                                                               |
+|                                                         Rows Removed by Filter: 620                                                                                                                   |
+|                                                         ->  Hash Join  (cost=167.17..495.76 rows=659 width=8) (actual time=0.251..2.337 rows=715 loops=1)                                             |
+|                                                               Hash Cond: (d_1.id_pelicula = pel_1.id)                                                                                                 |
+|                                                               ->  Seq Scan on dirige d_1  (cost=0.00..280.85 rows=18185 width=16) (actual time=0.007..0.770 rows=18185 loops=1)                       |
+|                                                               ->  Hash  (cost=159.58..159.58 rows=607 width=4) (actual time=0.236..0.236 rows=607 loops=1)                                            |
+|                                                                     Buckets: 1024  Batches: 1  Memory Usage: 30kB                                                                                     |
+|                                                                     ->  Bitmap Heap Scan on pelicula pel_1  (cost=12.99..159.58 rows=607 width=4) (actual time=0.067..0.185 rows=607 loops=1)         |
+|                                                                           Recheck Cond: (imdb >= '8'::numeric)                                                                                        |
+|                                                                           Heap Blocks: exact=115                                                                                                      |
+|                                                                           ->  Bitmap Index Scan on idx_imdb_pelicula  (cost=0.00..12.84 rows=607 width=0) (actual time=0.051..0.051 rows=607 loops=1) |
+|                                                                                 Index Cond: (imdb >= '8'::numeric)                                                                                    |
+|                                 ->  Index Scan using idx_id_pelicula on pelicula pel  (cost=0.00..0.06 rows=1 width=4) (actual time=0.002..0.002 rows=1 loops=63)                                     |
+|                                       Index Cond: (id = d.id_pelicula)                                                                                                                                |
+|                           ->  Index Scan using idx_id_pelicula_esta_en on esta_en e  (cost=0.00..0.05 rows=1 width=16) (actual time=0.001..0.002 rows=1 loops=63)                                     |
+|                                 Index Cond: (id_pelicula = d.id_pelicula)                                                                                                                             |
+|                     ->  Hash  (cost=1.04..1.04 rows=4 width=520) (actual time=0.019..0.019 rows=4 loops=1)                                                                                            |
+|                           Buckets: 1024  Batches: 1  Memory Usage: 9kB                                                                                                                                |
+|                           ->  Seq Scan on plataforma p  (cost=0.00..1.04 rows=4 width=520) (actual time=0.014..0.015 rows=4 loops=1)                                                                  |
+| Planning Time: 1.273 ms                                                                                                                                                                               |
+| Execution Time: 4.849 ms                                                                                                                                                                              |
+Tiempo 6.122 ms
+
+Con materialized sín índices:
+| QUERY PLAN                                                                                                                                                        |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Sort  (cost=1874.96..1876.36 rows=560 width=532) (actual time=8.913..8.916 rows=4 loops=1)                                                                        |
+|   Sort Key: (count(DISTINCT md.id_director)) DESC                                                                                                                 |
+|   Sort Method: quicksort  Memory: 25kB                                                                                                                            |
+|   ->  GroupAggregate  (cost=1815.75..1849.40 rows=560 width=532) (actual time=8.861..8.873 rows=4 loops=1)                                                        |
+|         Group Key: e.id_plataforma, p.nombre                                                                                                                      |
+|         ->  Sort  (cost=1815.75..1822.76 rows=2805 width=532) (actual time=8.847..8.852 rows=66 loops=1)                                                          |
+|               Sort Key: e.id_plataforma, p.nombre, md.id_director                                                                                                 |
+|               Sort Method: quicksort  Memory: 28kB                                                                                                                |
+|               ->  Hash Join  (cost=1221.32..1655.11 rows=2805 width=532) (actual time=6.531..8.766 rows=66 loops=1)                                               |
+|                     Hash Cond: (e.id_plataforma = p.id)                                                                                                           |
+|                     ->  Hash Join  (cost=1208.17..1634.37 rows=2805 width=16) (actual time=6.489..8.712 rows=66 loops=1)                                          |
+|                           Hash Cond: (e.id_pelicula = d.id_pelicula)                                                                                              |
+|                           ->  Seq Scan on esta_en e  (cost=0.00..267.81 rows=17381 width=16) (actual time=0.013..0.971 rows=17381 loops=1)                        |
+|                           ->  Hash  (cost=1174.39..1174.39 rows=2702 width=20) (actual time=6.399..6.400 rows=63 loops=1)                                         |
+|                                 Buckets: 4096  Batches: 1  Memory Usage: 36kB                                                                                     |
+|                                 ->  Hash Join  (cost=1023.90..1174.39 rows=2702 width=20) (actual time=6.353..6.385 rows=63 loops=1)                              |
+|                                       Hash Cond: (d.id_pelicula = pel.id)                                                                                         |
+|                                       ->  Hash Join  (cost=508.16..651.56 rows=2702 width=16) (actual time=2.655..2.669 rows=63 loops=1)                          |
+|                                             Hash Cond: (md.id_director = d.id_director)                                                                           |
+|                                             ->  Seq Scan on mejoresdirectores md  (cost=0.00..28.50 rows=1850 width=8) (actual time=0.021..0.022 rows=11 loops=1) |
+|                                             ->  Hash  (cost=280.85..280.85 rows=18185 width=16) (actual time=2.522..2.522 rows=18185 loops=1)                     |
+|                                                   Buckets: 32768  Batches: 1  Memory Usage: 1109kB                                                                |
+|                                                   ->  Seq Scan on dirige d  (cost=0.00..280.85 rows=18185 width=16) (actual time=0.013..0.864 rows=18185 loops=1) |
+|                                       ->  Hash  (cost=306.44..306.44 rows=16744 width=4) (actual time=3.582..3.583 rows=16744 loops=1)                            |
+|                                             Buckets: 32768  Batches: 1  Memory Usage: 845kB                                                                       |
+|                                             ->  Seq Scan on pelicula pel  (cost=0.00..306.44 rows=16744 width=4) (actual time=0.013..1.284 rows=16744 loops=1)    |
+|                     ->  Hash  (cost=11.40..11.40 rows=140 width=520) (actual time=0.031..0.031 rows=4 loops=1)                                                    |
+|                           Buckets: 1024  Batches: 1  Memory Usage: 9kB                                                                                            |
+|                           ->  Seq Scan on plataforma p  (cost=0.00..11.40 rows=140 width=520) (actual time=0.025..0.026 rows=4 loops=1)                           |
+| Planning Time: 4.499 ms                                                                                                                                           |
+| Execution Time: 21.392 ms                                                                                                                                         |  
+Tiempo: 25.891 ms
+
+Con materialized con índices:
+| QUERY PLAN                                                                                                                                                        |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Sort  (cost=1195.50..1195.54 rows=16 width=532) (actual time=3.155..3.157 rows=4 loops=1)                                                                         |
+|   Sort Key: (count(DISTINCT md.id_director)) DESC                                                                                                                 |
+|   Sort Method: quicksort  Memory: 25kB                                                                                                                            |
+|   ->  GroupAggregate  (cost=1166.97..1195.18 rows=16 width=532) (actual time=3.128..3.138 rows=4 loops=1)                                                         |
+|         Group Key: e.id_plataforma, p.nombre                                                                                                                      |
+|         ->  Sort  (cost=1166.97..1173.98 rows=2805 width=532) (actual time=3.116..3.119 rows=66 loops=1)                                                          |
+|               Sort Key: e.id_plataforma, p.nombre, md.id_director                                                                                                 |
+|               Sort Method: quicksort  Memory: 28kB                                                                                                                |
+|               ->  Hash Join  (cost=509.25..1006.33 rows=2805 width=532) (actual time=2.571..3.058 rows=66 loops=1)                                                |
+|                     Hash Cond: (e.id_plataforma = p.id)                                                                                                           |
+|                     ->  Nested Loop  (cost=508.16..990.08 rows=2805 width=16) (actual time=2.533..3.009 rows=66 loops=1)                                          |
+|                           ->  Nested Loop  (cost=508.16..820.68 rows=2702 width=20) (actual time=2.506..2.720 rows=63 loops=1)                                    |
+|                                 ->  Hash Join  (cost=508.16..651.56 rows=2702 width=16) (actual time=2.473..2.487 rows=63 loops=1)                                |
+|                                       Hash Cond: (md.id_director = d.id_director)                                                                                 |
+|                                       ->  Seq Scan on mejoresdirectores md  (cost=0.00..28.50 rows=1850 width=8) (actual time=0.008..0.009 rows=11 loops=1)       |
+|                                       ->  Hash  (cost=280.85..280.85 rows=18185 width=16) (actual time=2.302..2.302 rows=18185 loops=1)                           |
+|                                             Buckets: 32768  Batches: 1  Memory Usage: 1109kB                                                                      |
+|                                             ->  Seq Scan on dirige d  (cost=0.00..280.85 rows=18185 width=16) (actual time=0.008..0.762 rows=18185 loops=1)       |
+|                                 ->  Index Scan using idx_id_pelicula on pelicula pel  (cost=0.00..0.06 rows=1 width=4) (actual time=0.003..0.003 rows=1 loops=63) |
+|                                       Index Cond: (id = d.id_pelicula)                                                                                            |
+|                           ->  Index Scan using idx_id_pelicula_esta_en on esta_en e  (cost=0.00..0.05 rows=1 width=16) (actual time=0.004..0.004 rows=1 loops=63) |
+|                                 Index Cond: (id_pelicula = d.id_pelicula)                                                                                         |
+|                     ->  Hash  (cost=1.04..1.04 rows=4 width=520) (actual time=0.030..0.030 rows=4 loops=1)                                                        |
+|                           Buckets: 1024  Batches: 1  Memory Usage: 9kB                                                                                            |
+|                           ->  Seq Scan on plataforma p  (cost=0.00..1.04 rows=4 width=520) (actual time=0.024..0.025 rows=4 loops=1)                              |
+| Planning Time: 4.172 ms                                                                                                                                           |
+| Execution Time: 3.350 ms                                                                                                                                          |
+Tiempo: 7.522 ms
+
+                                                                                                                                                                                                                                                                                                                                                                                      |

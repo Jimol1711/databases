@@ -39,7 +39,7 @@ JOIN (
     SELECT
         p.ID AS ID_plataforma,
         gen.nombre,
-        ROW_NUMBER() OVER (PARTITION BY p.ID ORDER BY COUNT(*) DESC) AS rnk_mas,
+        
         ROW_NUMBER() OVER (PARTITION BY p.ID ORDER BY COUNT(*) ASC) AS rnk_menos
     FROM
         plataforma p
@@ -59,7 +59,7 @@ JOIN (
         p.ID AS ID_plataforma,
         gen.nombre,
         ROW_NUMBER() OVER (PARTITION BY p.ID ORDER BY COUNT(*) ASC) AS rnk_menos,
-        ROW_NUMBER() OVER (PARTITION BY p.ID ORDER BY COUNT(*) DESC) AS rnk_mas
+        
     FROM
         plataforma p
     JOIN
@@ -93,3 +93,6 @@ JOIN
     genero gen ON g.ID_genero = gen.ID
 GROUP BY
     p.nombre;
+
+4. Cantidad de buenos directores
+
